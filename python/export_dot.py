@@ -52,6 +52,7 @@ def dot(url_list, render_map, output_file):
     # A -> B;
     f.write("  " + from_hash + " -> " + to_hash + ";\n")
 
+  f.write("kai\n")
   f.write("}\n")
   f.close()
 

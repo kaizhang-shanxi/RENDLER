@@ -26,6 +26,7 @@ TASK_MEM = 32
 SHUTDOWN_TIMEOUT = 30  # in seconds
 LEADING_ZEROS_COUNT = 5  # appended to task ID to facilitate lexicographical order
 TASK_ATTEMPTS = 5  # how many times a task is attempted
+# TASK_ATTEMPTS = 1  # how many times a task is attempted
 
 CRAWLER_TASK_SUFFIX = "-crwl"
 RENDER_TASK_SUFFIX = "-rndr"
@@ -88,11 +89,11 @@ class RenderingCrawler(Scheduler):
         task.executor.MergeFrom(self.renderExecutor)
         task.data = str(url)
         return task
-    
+
     def retryTask(self, task_id, url):
         if not url in self.tasksRetrying:
             self.tasksRetrying[url] = 1
-            
+
         if self.tasksRetrying[url] < TASK_ATTEMPTS:
             self.tasksRetrying[url] += 1
             ordinal = lambda n: "%d%s" % (n, \
@@ -127,7 +128,7 @@ class RenderingCrawler(Scheduler):
 
     def resourceOffers(self, driver, offers):
         self.printStatistics()
-        
+
         if not self.crawlQueue and not self.renderQueue and self.tasksRunning <= 0:
             print "Nothing to do, RENDLER is shutting down"
             hard_shutdown()
@@ -169,13 +170,14 @@ class RenderingCrawler(Scheduler):
 
         if update.state == 1:  # Running
             self.tasksRunning += 1
-            
+
         elif update.state == 3:  # Failed, retry
+            print("kai >>> update >>> {}".format(update))
             print "Task [%s] failed with message \"%s\"" \
               % (update.task_id.value, update.message)
             self.tasksRunning -= 1
             self.retryTask(update.task_id.value, update.data)
-       
+
         elif self.tasksRunning > 0 and update.state > 1: # Terminal state
             self.tasksRunning -= 1
 
@@ -203,18 +205,18 @@ class RenderingCrawler(Scheduler):
             print "Appending [%s] to render results" % repr((result.url, result.imageUrl))
             self.renderResults[result.url] = result.imageUrl
 
-def hard_shutdown():  
+def hard_shutdown():
     driver.stop()
 
 def graceful_shutdown(signal, frame):
     print "RENDLER is shutting down"
     rendler.shuttingDown = True
-    
+
     wait_started = datetime.datetime.now()
     while (rendler.tasksRunning > 0) and \
       (SHUTDOWN_TIMEOUT > (datetime.datetime.now() - wait_started).total_seconds()):
         time.sleep(1)
-    
+
     if (rendler.tasksRunning > 0):
         print "Shutdown by timeout, %d task(s) have not completed" % rendler.tasksRunning
 
@@ -228,7 +230,8 @@ if __name__ == "__main__":
         print "Usage: %s seedUrl mesosMasterUrl [maxRenderTasks]" % sys.argv[0]
         sys.exit(1)
 
-    baseURI = "/home/vagrant/hostfiles"
+    # baseURI = "/home/vagrant/hostfiles"
+    baseURI = "/apps/Projects/RENDLER"
     suffixURI = "python"
     uris = [ "crawl_executor.py",
              "export_dot.py",
@@ -237,6 +240,7 @@ if __name__ == "__main__":
              "task_state.py" ]
     uris = [os.path.join(baseURI, suffixURI, uri) for uri in uris]
     uris.append(os.path.join(baseURI, "render.js"))
+    # print("kai >>> uris >>> {}".format(uris))
 
     crawlExecutor = mesos_pb2.ExecutorInfo()
     crawlExecutor.executor_id.value = "crawl-executor"
@@ -284,5 +288,7 @@ if __name__ == "__main__":
         time.sleep(1)
 
     export_dot.dot(rendler.crawlResults, rendler.renderResults, "result.dot")
+    print("kai >>> rendler.crawlResults >>> {}".format(rendler.crawlResults))
+    print("kai >>> rendler.rendedrResults >>> {}".format(rendler.renderResults))
     print "Goodbye!"
     sys.exit(0)

@@ -45,6 +45,7 @@ class CrawlExecutor(Executor):
       print "CrawlExecutor disconnected"
 
     def launchTask(self, driver, task):
+        print("kai >>> launchTask >>> begin...")
         def run_task():
             print "Running crawl task %s" % task.task_id.value
             update = mesos_pb2.TaskStatus()
@@ -64,11 +65,11 @@ class CrawlExecutor(Executor):
                 update.state = mesos_pb2.TASK_FAILED
                 update.message = error_msg
                 update.data = url
-                
+
                 driver.sendStatusUpdate(update)
                 print error_msg
                 return
-                
+
             soup = BeautifulSoup(source)
 
             links = []
